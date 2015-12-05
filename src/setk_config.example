@@ -1,0 +1,44 @@
+# Speech Enhancement Toolkit Configuration File #
+#################################################
+
+# Input file name (this file will be used as sound input)
+# Uncomment to enable
+# Example: input_file sound.wav
+# input_file
+
+# Output file name (this file will be used as sound output)
+# Uncomment to enable
+# Example: output_file sound.wav
+# output_file
+
+# Duration of speech frame given in milliseconds [ms], (default value: 20 ms)
+# Uncomment to enable
+# Example: frame_duration 20
+# frame_duration
+
+# Overlap of adjacent frames given as percentual value in range 0 - 99 percent
+# Uncomment to enable
+# Default: 50 % overlap
+# Example: overlap 50
+# overlap 50
+
+# FFT size (default: size of FFT transform is calculated from duration of speech frame)
+# Uncomment to enable
+# Optimal size: 512 - 2048 samples
+# Example: fft_size 1024
+# fft_size 1024
+
+# Type of window function
+# Uncomment to enable
+# Window types: hamming [0], hanning [1], blackman [2], bartlett [3], triangular [4] or boxcar [5]
+# Default: hamming window
+# Example: window [number], e.g. window 0
+# window 0
+
+# Downmix to mono (default: false)
+# Uncomment to enable
+# Downmix multichannel audio to mono
+# downmix true
+
+# Be verbose? (default: false)
+# verbose true
