@@ -19,8 +19,15 @@
 #include "config.h"
 #endif
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <errno.h>
 #include <getopt.h>
+#include <math.h>
 #include "common.h"        /* common functions to all setk modules */
+#include "toolkit.h"
+#include "i18n.h"
 
 static pl_rule setk_conf_rules[] = {
   { "input_file",        PLRT_STRING,     offsetof(setk_options, input_filename) },
@@ -28,7 +35,7 @@ static pl_rule setk_conf_rules[] = {
   { "frame_duration",    PLRT_INTEGER,    offsetof(setk_options, frame_duration) },
   { "overlap",           PLRT_INTEGER,    offsetof(setk_options, overlap_percentage) },
   { "fft_size",          PLRT_INTEGER,    offsetof(setk_options, fft_size) },
-  { "window",            PLRT_INTEGER,    offsetof(setk_options, window_type) },
+  { "window",            PLRT_STRING,     offsetof(setk_options, window_type) },
   { "downmix",           PLRT_BOOL,       offsetof(setk_options, downmix) },
   { "verbose",           PLRT_BOOL,       offsetof(setk_options, verbosity) },
   { NULL,                PLRT_END,        0 },
@@ -61,6 +68,9 @@ static void check_int_range (const char * name, int value, int lower, int upper)
 /* parse arguments */
 static void parse_arguments(setk_options * args);
 
+/* parse configuration file */
+static int parse_line(char *line, const char *split, pl_rule *rules, void *data);
+
 /* process audio file */
 static void process_file (setk_options * args);
 
@@ -72,7 +82,7 @@ static void help(const char *argv0)
 {
 
     printf(_(
-             "\nSpeech Enhancement Toolkit\n"
+             "\nSound Enhancement Toolkit\n"
 	     "--------------------------\n\n"
              "Usage: %s [options]\n\n"
              "  -h, --help                            Show this help\n"
@@ -86,7 +96,7 @@ static void help(const char *argv0)
              "                                        range <0 - 99>\n\n"
              "      --fft-size                        Size of Fast Fourier Transform\n"
 	     "      --downmix                         Downmix multichannel audio to mono\n"
-             "      --window [number]                 Type of window function [hamming [0], hanning [1], blackman [2],\n"
+             "      --window                          Type of window function [hamming [0], hanning [1], blackman [2],\n"
              "                                        bartlett [3], triangular [4] or boxcar [5] window]\n\n")
            , argv0);
 }
@@ -100,11 +110,10 @@ int main(int argc, char **argv)
     .overlap_percentage = 50,
     .input_filename = NULL,
     .output_filename = NULL,
-    .window_type = 0,
+    .window_type = NULL,
     .downmix = false,
     .verbosity = false,
     .nwind = 0,
-    .winGain = 0.0
   };
   
   int opt = 0;
@@ -134,8 +143,7 @@ int main(int argc, char **argv)
               opts.output_filename = optarg;
               break;
           case ARG_VERSION:
-              printf(_("Speech Enhancement Toolkit version %.2f\n"),
-                       SETK_VERSION);
+              printf(_("Sound Enhancement Toolkit\n"));
               break;
           case 'v':   /* verbose mode */
               opts.verbosity = true;
@@ -151,9 +159,7 @@ int main(int argc, char **argv)
                opts.downmix = true;
                break;
           case ARG_WINDOW_TYPE: /* window function type */
-              if (atoi(optarg) >= 0 && atoi(optarg) <= 5) {
-                  opts.window_type = atoi(optarg);
-                 }
+                  opts.window_type = optarg;
               break;
           default:
               break;
@@ -297,11 +303,11 @@ static void process_file (setk_options * args)
      
      sf_set_string (output_file, SF_STR_TITLE, args -> output_filename);
      sf_set_string (output_file, SF_STR_COMMENT, "Enhanced audio signal");
-     sf_set_string (output_file, SF_STR_SOFTWARE, "Speech Enhancement Toolbox");
+     sf_set_string (output_file, SF_STR_SOFTWARE, "Sound Enhancement Toolkit");
      sf_set_string (output_file, SF_STR_COPYRIGHT, "No copyright.");
      
-     enhance_audio(input_file, output_file, args -> nwind, args -> overlap_percentage, args -> downmix);
-
+     enhance_audio(input_file, output_file, args -> window_type, args -> nwind, args -> fft_size, args -> overlap_percentage, args -> downmix);
+     
      sf_close(output_file);
      sf_close(input_file);
   
@@ -322,5 +328,99 @@ static void file_info(setk_options * args)
    printf(_("Downmix to mono: %s\n"), istrue_bool(args -> downmix));
    printf(_("Output Format: same as source\n"));
    printf(_("-----------------------------------------\n\n"));
+}
+
+/* parse configuration file */
+static int parse_line(char *line, const char *split, pl_rule *rules, void *data)
+{
+  unsigned int r, len;
+  char *end = NULL, *val = NULL, *p = NULL;
+  void *store;
+
+  /* Chop off \n and \r and white space */
+  p = &line[strlen(line)-1];
+  while (p >= line && (
+         *p == '\n' ||
+         *p == '\r' ||
+         *p == '\t' ||
+         *p == ' ')) *p-- = '\0';
+
+  /* Ignore comments and emtpy lines */
+  if (strlen(line) == 0 ||
+      line[0] == '#' ||
+      line[0] == ';' ||
+      (line[0] == '/' && line[1] == '/'))
+  {
+  return 1;
+ }
+
+  /* Get the end of the first argument */
+  p = line;
+  end = &line[strlen(line)-1];
+  /* Skip until whitespace */
+  while (p < end &&
+         strncmp(p, split, strlen(split)) != 0) p++;
+  /* Terminate this argument */
+  *p = '\0';
+  p++;
+
+  /* Skip whitespace */
+  while ( p < end &&
+         *p == ' ' &&
+         *p == '\t') p++;
+
+  /* Start of the value */
+  val = p+(strlen(split)-1);
+
+  /* If starting with quotes, skip until next quote */
+  if (*p == '"' || *p == '\'') {
+       p++;
+       /* Find next quote */
+       while ( p <= end &&
+              *p != *val &&
+              *p != '\0') p++;
+       /* Terminate */
+       *p = '\0';
+       /* Skip the first quote */
+       val++;
+     }
+  /* Otherwise it is already terminated above */
+
+  /* Walk through all the rules */
+  for (r = 0; rules[r].type != PLRT_END; r++) {
+       len = (int)strlen(rules[r].title);
+       if (strncmp(line, rules[r].title, len) != 0) continue;
+
+       store = (void *)((char *)data + rules[r].offset);
+
+       switch (rules[r].type) {
+         case PLRT_STRING:
+               *((const char **)store) = strdup(val);
+         break;
+
+         case PLRT_INTEGER:
+           *((int *)store) = atoi(val);
+         break;
+
+         case PLRT_BOOL:
+           if (strcmp(val, "yes") == 0 ||
+               strcmp(val, "true") == 0) {
+                 *((bool *)store) = true;
+            }
+           else if (strcmp(val, "no") == 0 ||
+             strcmp(val, "false") == 0) {
+               *((bool *)store) = false;
+           }
+           else {
+             printf(_("Unknown boolean value \"%s\" for option \"%s\"\n"), val, rules[r].title);
+           }
+         break;
+
+        case PLRT_END:
+         return 0;
+        }
+        return 1;
+      }
+    return 0;
 }
 

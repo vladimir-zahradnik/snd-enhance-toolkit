@@ -2,145 +2,166 @@
  * This file implements basic windowing functions            * 
  *************************************************************/
 
-/* n : indicates n-th element of vector,
-   wlen : size of a vector */
-
-#include <math.h>
+#include <stdio.h>
 #include "window.h"
+#include <math.h>
+#include "i18n.h"
 
 /* Declarations of Window Functions used in this module */
 
 /* hamming window */
-static double hamming(double n, int wlen);
+static double hamming(double * data, int datalen);
 
 /* hanning window */
-static double hanning(double n, int wlen);
+static double hanning(double * data, int datalen);
 
 /* blackman window */
-static double blackman(double n, int wlen);
+static double blackman(double * data, int datalen);
 
 /* bartlett window */
-static double bartlett(double n, int wlen);
+static double bartlett(double * data, int datalen);
 
 /* triangular window */
-static double triang(double n, int wlen);
+static double triang(double * data, int datalen);
 
 /* boxcar window */
-static double boxcar(double n, int wlen);
+static double boxcar(double * data, int datalen);
 
 /* --------------------------------------- */
 
-/* access to window functions, where wind_type specifies type of window */
-double setk_window(double n, int wlen, int wind_type)
+/* calculate window */
+double calc_window (double * data, int datalen, const char * window_name)
 {
-  double wind_ret;
-  
-  switch (wind_type) {
-    case 0: /* hamming window */
-      wind_ret = hamming(n, wlen);
-      break;
-    case 1: /* hanning window */
-      wind_ret = hanning(n, wlen);
-      break;
-    case 2: /* blackman window */
-      wind_ret = blackman(n, wlen);
-      break;
-    case 3: /* bartlett window */
-      wind_ret = bartlett(n, wlen);
-      break;
-    case 4: /* triangular window */
-      wind_ret = triang(n, wlen);
-      break;
-    case 5: /* boxcar window */
-      wind_ret = boxcar(n, wlen);
-      break;
-    default: /* hamming window is default */
-      wind_ret = hamming(n, wlen);
-      break;
+  if (window_name == NULL) {
+    puts(_("\nNo window type was specified. Using default.\n"));
+    return (hamming (data, datalen));
   }
-  return wind_ret;
-}
-
-/* returns name of used window function */
-char * setk_wind_info(int wind_type)
-{
-  char * wind_name[] = { "Hamming Window", "Hanning Window", "Blackman Window",
-                         "Bartlett Window", "Triangular Window", "Boxcar Window" };
-
-    return wind_name[wind_type];
+  if (strcmp (window_name, "hamming") == 0)
+    return ( hamming (data, datalen) );
+  if (strcmp (window_name, "hanning") == 0)
+    return ( hanning (data, datalen) );
+  if (strcmp (window_name, "blackman") == 0)
+    return ( blackman (data, datalen) );
+  if (strcmp (window_name, "bartlett") == 0)
+    return ( bartlett (data, datalen) );
+  if (strcmp (window_name, "triangular") == 0)
+    return ( triang (data, datalen) );
+  if (strcmp (window_name, "boxcar") == 0)
+    return ( boxcar (data, datalen) );
+  
+  puts(_("\nError: Bad window type. Using default.\n\n"));
+  return (hamming (data, datalen));
 }
 
 /* hamming window */
-static double hamming(double n, int wlen)
+static double hamming(double * data, int datalen)
 {
-  return ((n >= 0) && (n <= wlen-1)) ? 0.54-0.46*cos(2*M_PI*n/(wlen-1)) : 0;
+  int n;
+  double winGain = 0.0;
+  
+  for (n = 0; n < datalen; n++) {
+    data [n] = ((n >= 0) && (n <= datalen-1)) ? 0.54-0.46 * cos (2 * M_PI * n / (datalen-1)) : 0;
+    winGain += data [n];
+  }
+  return winGain;  
 }
 
 /* hanning window */
-static double hanning(double n, int wlen)
+static double hanning(double * data, int datalen)
 {
-  return ((n >= 0) && (n <= wlen-1)) ? 0.5*(1-cos(2*M_PI*(n+1)/(wlen+1))) : 0;
+  int n;
+  double winGain = 0.0;
+  
+  for (n = 0; n < datalen; n++) {
+    data [n] = ((n >= 0) && (n <= datalen-1)) ? 0.5 * (1 - cos (2 * M_PI * (n+1) / (datalen+1))) : 0;
+    winGain += data [n];
+  }
+  return winGain;
 }
 
 /* blackman window */
-static double blackman(double n, int wlen)
+static double blackman(double * data, int datalen)
 {
-  return ((n >= 0) && (n <= wlen-1)) ? 
-    0.42-0.5*cos(2*M_PI*n/(wlen-1))+0.08*cos(4*M_PI*n/(wlen-1)) : 0;
+  int n;
+  double winGain = 0.0;
+  
+  for (n = 0; n < datalen; n++) {
+     data [n] = ((n >= 0) && (n <= datalen-1)) ? 
+          0.42-0.5 * cos (2 * M_PI * n / (datalen-1)) + 0.08 * cos (4 * M_PI * n / (datalen-1)) : 0;
+     winGain += data [n];
+  }
+  return winGain;
 }
 
 /* bartlett window */
-static double bartlett(double n, int wlen)
+static double bartlett(double * data, int datalen)
 {
-  double pom;
-  pom = (double) wlen/2;
-  if (pom == wlen/2) 
-  { /* n is even */
-    if ((n >= 0) && (n <= wlen/2-1))  
-      return  2*n/(wlen-1);
-    else if ((n >= wlen/2) && (n <= wlen-1))
-      return  2*(wlen-n-1)/(wlen-1);
+  int n;
+  double winGain = 0.0;
+  
+  for (n = 0; n < datalen; n++) {
+   if ((datalen % 2) == 0)
+    { /* n is even */
+      if ((n >= 0) && (n <= datalen/2-1))  
+        data [n] =  2.0*n/(datalen-1);
+      else if ((n >= datalen/2) && (n <= datalen-1))
+        data [n] =  2.0*(datalen-n-1)/(datalen-1);
+      else 
+        data [n] = 0.0;
+    }
     else 
-      return 0;
+    { /* n is odd */
+      if ((n >= 0) && (n <= (datalen-1)/2))  
+        data [n] = 2.0*n/(datalen-1);
+      else if ((n > (datalen-1)/2) && (n <= datalen-1))
+        data [n] = 2-2.0*n/(datalen-1);
+      else 
+        data [n] = 0.0;
+    }
+    winGain += data [n];
   }
-  else 
-  { /* n is odd */
-    if ((n >= 0) && (n <= (wlen-1)/2))  
-      return 2*n/(wlen-1);
-    else if ((n > (wlen-1)/2) && (n <= wlen-1))
-      return 2-2*n/(wlen-1);
-    else 
-      return 0;
-  }
+  return winGain;
 }
 
 /* triangular window */
-static double triang(double n, int wlen)
+static double triang(double * data, int datalen)
 {
-  double pom;
-  pom = (double) wlen/2;
-  if (pom == wlen/2) 
-  { /* n is even */
-    if ((n >= 0) && (n <= wlen/2-1))  
-      return  (2*n+1)/wlen;
-    else if ((n >= wlen/2) && (n <= wlen-1))
-      return  (2*(wlen-n)-1)/wlen;
+  int n;
+  double winGain = 0.0;
+  
+  for (n = 0; n < datalen; n++) {
+    if ((datalen % 2) == 0)
+    { /* n is even */
+      if ((n >= 0) && (n <= datalen/2-1))  
+        data [n] = (2.0*n+1)/datalen;
+      else if ((n >= datalen/2) && (n <= datalen-1))
+        data [n] = (2.0*(datalen-n)-1)/datalen;
+      else 
+        data [n] = 0.0;
+    }
     else 
-      return 0;
+    { /* n is odd */
+      if ((n >= 0) && (n <= (datalen-1)/2))  
+        data [n] = 2.0*(n+1)/(datalen+1);
+      else if ((n > (datalen-1)/2) && (n <= datalen-1))
+        data [n] = 2.0*(datalen-n)/(datalen+1);
+      else 
+        data [n] = 0.0;
+    }
+    winGain += data [n];
   }
-  else 
-  { /* n is odd */
-    if ((n >= 0) && (n <= (wlen-1)/2))  
-      return 2*(n+1)/(wlen+1);
-    else if ((n > (wlen-1)/2) && (n <= wlen-1))
-      return 2*(wlen-n)/(wlen+1);
-    else 
-      return 0;
-  }
+  return winGain;
 }
 
 /* boxcar window */
-static double boxcar(double n, int wlen)
+static double boxcar(double * data, int datalen)
 {
-  return ((n >= 0) && (n < wlen)) ? 1 : 0;
+  int n;
+  double winGain = 0.0;
+  
+  for (n = 0; n < datalen; n++) {
+    data [n] = ((n >= 0) && (n < datalen)) ? 1 : 0;
+    winGain += data [n];
+  }
+  return winGain;
 }

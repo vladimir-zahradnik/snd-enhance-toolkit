@@ -15,102 +15,16 @@
 ** along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "config.h"
+//#include "config.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <errno.h>
+#include <math.h>
+#include <complex.h>
+#include <fftw3.h>
 #include "common.h"
-
-/* parse configuration file */
-int parse_line(char *line, const char *split, pl_rule *rules, void *data)
-{
-  unsigned int r, len;
-  char *end = NULL, *val = NULL, *p = NULL;
-  void *store;
-
-  /* Chop off \n and \r and white space */
-  p = &line[strlen(line)-1];
-  while (p >= line && (
-         *p == '\n' ||
-         *p == '\r' ||
-         *p == '\t' ||
-         *p == ' ')) *p-- = '\0';
-
-  /* Ignore comments and emtpy lines */
-  if (strlen(line) == 0 ||
-      line[0] == '#' ||
-      line[0] == ';' ||
-      (line[0] == '/' && line[1] == '/'))
-  {
-  return 1;
- }
-
-  /* Get the end of the first argument */
-  p = line;
-  end = &line[strlen(line)-1];
-  /* Skip until whitespace */
-  while (p < end &&
-         strncmp(p, split, strlen(split)) != 0) p++;
-  /* Terminate this argument */
-  *p = '\0';
-  p++;
-
-  /* Skip whitespace */
-  while ( p < end &&
-         *p == ' ' &&
-         *p == '\t') p++;
-
-  /* Start of the value */
-  val = p+(strlen(split)-1);
-
-  /* If starting with quotes, skip until next quote */
-  if (*p == '"' || *p == '\'') {
-       p++;
-       /* Find next quote */
-       while ( p <= end &&
-              *p != *val &&
-              *p != '\0') p++;
-       /* Terminate */
-       *p = '\0';
-       /* Skip the first quote */
-       val++;
-     }
-  /* Otherwise it is already terminated above */
-
-  /* Walk through all the rules */
-  for (r = 0; rules[r].type != PLRT_END; r++) {
-       len = (int)strlen(rules[r].title);
-       if (strncmp(line, rules[r].title, len) != 0) continue;
-
-       store = (void *)((char *)data + rules[r].offset);
-
-       switch (rules[r].type) {
-         case PLRT_STRING:
-               *((const char **)store) = strdup(val);
-         break;
-
-         case PLRT_INTEGER:
-           *((int *)store) = atoi(val);
-         break;
-
-         case PLRT_BOOL:
-           if (strcmp(val, "yes") == 0 ||
-               strcmp(val, "true") == 0) {
-                 *((bool *)store) = true;
-            }
-           else if (strcmp(val, "no") == 0 ||
-             strcmp(val, "false") == 0) {
-               *((bool *)store) = false;
-           }
-           else {
-             printf(_("Unknown boolean value \"%s\" for option \"%s\"\n"), val, rules[r].title);
-           }
-         break;
-
-        case PLRT_END:
-         return 0;
-        }
-        return 1;
-      }
-    return 0;
-}
+#include "i18n.h"
 
 /* sfx_mix_mono_read_double */
 sf_count_t sfx_mix_mono_read_double (SNDFILE * file, double * data, sf_count_t datalen)
@@ -190,14 +104,25 @@ int combine_channels_double (double * multi_data, double * single_data, int fram
 }
 
 /* enhance audio file */
-int enhance_audio (SNDFILE * input_file, SNDFILE * output_file, int window_size, int overlap, bool downmix)
+int enhance_audio (SNDFILE * input_file, SNDFILE * output_file, const char * window_type, int fft_size, int window_size, int overlap, bool downmix)
 {
   SF_INFO info;
-  int noverlap, nslide, channels, ch;
-  sf_count_t count, frames_read;
-  double * multi_data, * prev_multi_data, * buffer, * enhanced_multi_data;
-  frames_read = 0;
   sf_count_t (* ptr_read_dbl)() = sf_readf_double;
+  int noverlap, nslide, channels, ch, i;
+  sf_count_t count, frames_read = 0;
+  double * multi_data, * prev_multi_data, * buffer, * window, * enhanced_multi_data;
+  double * enhanced_prev;
+  double winGain; /* normalization gain */
+  
+  /* initialize FFT */
+  //double complex * fft_in = (double complex *) fftw_malloc(sizeof(* fft_in) * fft_size);
+  //double complex * fft_out = (double complex *) fftw_malloc(sizeof(* fft_out) * fft_size);
+  double complex fft_in[FFT_MAX];
+  double complex fft_out[FFT_MAX];
+  
+  /* create plan for FFT and IFFT transform */
+  fftw_plan fft_forw = fftw_plan_dft_1d(fft_size, fft_in, fft_out, FFTW_FORWARD, FFTW_MEASURE);
+  fftw_plan fft_back = fftw_plan_dft_1d(fft_size, fft_out, fft_in, FFTW_BACKWARD, FFTW_MEASURE);
   
   #if HAVE_SF_GET_INFO
        /*
@@ -205,9 +130,9 @@ int enhance_audio (SNDFILE * input_file, SNDFILE * output_file, int window_size,
        **  before 1.0.18 final and replaced with the SFC_GET_CURRENT_SF_INFO command.
        */
        sf_get_info (input_file, &info);
-#else
+  #else
        sf_command (input_file, SFC_GET_CURRENT_SF_INFO, &info, sizeof (info));
-#endif
+  #endif
    
    if (downmix == true) {
      /* if downmix is enabled, use sfx_mix_mono_read_double */
@@ -227,7 +152,13 @@ int enhance_audio (SNDFILE * input_file, SNDFILE * output_file, int window_size,
    
    /* output buffers */
    buffer = init_buffer_dbl(window_size);
-   enhanced_multi_data = init_buffer_dbl(window_size * channels);
+   window = init_buffer_dbl(window_size);
+   enhanced_prev = init_buffer_dbl(nslide); /* a priori enhanced data */
+   enhanced_multi_data = init_buffer_dbl(nslide * channels);
+   
+   /* calculate window */
+   winGain = calc_window(window, window_size, window_type);
+   winGain = nslide / winGain;
    
    do {
       if(frames_read == 0) {
@@ -245,16 +176,39 @@ int enhance_audio (SNDFILE * input_file, SNDFILE * output_file, int window_size,
 
         for (ch = 0; ch < channels; ch++) {
               separate_channels_double (multi_data, buffer, window_size, channels, ch);
-              combine_channels_double (enhanced_multi_data, buffer, window_size, channels, ch);
-        }
+      
+             /* apply window */
+             multiply_arrays_dbl(buffer, window, buffer, window_size);
+     
+             snd_enhance_specsub(buffer, window_size, fft_in, fft_out, fft_forw, fft_back, fft_size);
+     
+            /* Add-and-Overlap */
+            for (i = 0; i < nslide; i++) {
+               buffer[i] = winGain * (creal(fft_in[i])/fft_size + enhanced_prev[i]);
+            }
+    
+           for (i = 0; i < nslide; i++) {
+               enhanced_prev[i] = creal(fft_in[i+noverlap])/fft_size;
+           }
+     
+           combine_channels_double (enhanced_multi_data, buffer, nslide, channels, ch);
+       }
         
-        sf_writef_double (output_file, enhanced_multi_data, window_size);
+        sf_writef_double (output_file, enhanced_multi_data, nslide);
    } while (count > 0);
    
-   free(multi_data);
-   free(prev_multi_data);
-   free(enhanced_multi_data);
-   free(buffer);
+   free (multi_data);
+   free (prev_multi_data);
+   free (enhanced_prev);
+   free (enhanced_multi_data);
+   free (buffer);
+   free (window);
+   
+   /* destroy FFT plan and free memory */
+   fftw_destroy_plan (fft_forw);
+   fftw_destroy_plan (fft_back);
+   //fftw_free (fft_in);
+   //fftw_free (fft_out);
        
   return 0;
 }
@@ -267,6 +221,16 @@ double * init_buffer_dbl(size_t size)
      printf(_("\nError: malloc failed: %s\n"), strerror(errno));
      exit (1);
   }
+  /* initialize array to zero */
+  memset ((void *) ptr, 0, sizeof(* ptr) * size);
   
-   return (ptr);
+  return (ptr);
+}
+
+/* multiply two arrays */
+void multiply_arrays_dbl(double * array1, double * array2, double * output_array, int len)
+{
+  int i;
+  for (i = 0; i < len; i++)
+    output_array [i] = array1 [i] * array2 [i];
 }

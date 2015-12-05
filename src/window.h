@@ -6,13 +6,11 @@
 
  ********************************************************************/
 
-#ifndef _WINDOW_H_
-#define _WINDOW_H_
+#ifndef HAVE_WINDOW_H
+#define HAVE_WINDOW_H
 
-/* access to window functions, where wind_type specifies type of window */
-extern double setk_window(double n, int wlen, int wind_type);
-
-/* returns name of used window function */
-extern char * setk_wind_info(int wind_type);
+/* calculate window */
+/* window types: hamming, hanning, blackman, bartlett, triangular, boxcar */
+extern double calc_window (double * data, int datalen, const char * window_name);
 
 #endif
