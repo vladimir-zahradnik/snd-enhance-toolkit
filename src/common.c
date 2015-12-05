@@ -15,15 +15,12 @@
 ** along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-//#include "config.h"
+#include "common.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
 #include <math.h>
-#include <complex.h>
-#include <fftw3.h>
-#include "common.h"
 #include "i18n.h"
 
 /* sfx_mix_mono_read_double */
@@ -103,116 +100,6 @@ int combine_channels_double (double * multi_data, double * single_data, int fram
    return 0;
 }
 
-/* enhance audio file */
-int enhance_audio (SNDFILE * input_file, SNDFILE * output_file, const char * window_type, int fft_size, int window_size, int overlap, bool downmix)
-{
-  SF_INFO info;
-  sf_count_t (* ptr_read_dbl)() = sf_readf_double;
-  int noverlap, nslide, channels, ch, i;
-  sf_count_t count, frames_read = 0;
-  double * multi_data, * prev_multi_data, * buffer, * window, * enhanced_multi_data;
-  double * enhanced_prev;
-  double winGain; /* normalization gain */
-  
-  /* initialize FFT */
-  //double complex * fft_in = (double complex *) fftw_malloc(sizeof(* fft_in) * fft_size);
-  //double complex * fft_out = (double complex *) fftw_malloc(sizeof(* fft_out) * fft_size);
-  double complex fft_in[FFT_MAX];
-  double complex fft_out[FFT_MAX];
-  
-  /* create plan for FFT and IFFT transform */
-  fftw_plan fft_forw = fftw_plan_dft_1d(fft_size, fft_in, fft_out, FFTW_FORWARD, FFTW_MEASURE);
-  fftw_plan fft_back = fftw_plan_dft_1d(fft_size, fft_out, fft_in, FFTW_BACKWARD, FFTW_MEASURE);
-  
-  #if HAVE_SF_GET_INFO
-       /*
-       **  The function sf_get_info was in a number of 1.0.18 pre-releases but was removed
-       **  before 1.0.18 final and replaced with the SFC_GET_CURRENT_SF_INFO command.
-       */
-       sf_get_info (input_file, &info);
-  #else
-       sf_command (input_file, SFC_GET_CURRENT_SF_INFO, &info, sizeof (info));
-  #endif
-   
-   if (downmix == true) {
-     /* if downmix is enabled, use sfx_mix_mono_read_double */
-     channels = 1;
-     ptr_read_dbl = sfx_mix_mono_read_double;
-   }
-   else {
-     channels = info.channels;
-   }
-       
-   noverlap = floor(window_size * overlap / 100);
-   nslide = window_size - noverlap;
-   
-   /* input buffers */
-   multi_data = init_buffer_dbl(window_size * channels);
-   prev_multi_data = init_buffer_dbl(noverlap * channels);
-   
-   /* output buffers */
-   buffer = init_buffer_dbl(window_size);
-   window = init_buffer_dbl(window_size);
-   enhanced_prev = init_buffer_dbl(nslide); /* a priori enhanced data */
-   enhanced_multi_data = init_buffer_dbl(nslide * channels);
-   
-   /* calculate window */
-   winGain = calc_window(window, window_size, window_type);
-   winGain = nslide / winGain;
-   
-   do {
-      if(frames_read == 0) {
-        if ((count = ptr_read_dbl (input_file, multi_data, window_size)) <= 0)
-             exit (1);
-        memcpy((void *) prev_multi_data, (void *) (multi_data + nslide * channels), sizeof(* multi_data) * noverlap * channels);
-      }
-      else {
-        count = ptr_read_dbl (input_file, (multi_data + noverlap * channels), nslide);
-        memcpy((void *) multi_data, (void *) prev_multi_data, sizeof(* prev_multi_data) * noverlap * channels);
-        memcpy((void *) prev_multi_data, (void *) (multi_data + nslide * channels), sizeof(* multi_data) * noverlap * channels);
-      }
-        
-        frames_read += count;
-
-        for (ch = 0; ch < channels; ch++) {
-              separate_channels_double (multi_data, buffer, window_size, channels, ch);
-      
-             /* apply window */
-             multiply_arrays_dbl(buffer, window, buffer, window_size);
-     
-             snd_enhance_specsub(buffer, window_size, fft_in, fft_out, fft_forw, fft_back, fft_size);
-     
-            /* Add-and-Overlap */
-            for (i = 0; i < nslide; i++) {
-               buffer[i] = winGain * (creal(fft_in[i])/fft_size + enhanced_prev[i]);
-            }
-    
-           for (i = 0; i < nslide; i++) {
-               enhanced_prev[i] = creal(fft_in[i+noverlap])/fft_size;
-           }
-     
-           combine_channels_double (enhanced_multi_data, buffer, nslide, channels, ch);
-       }
-        
-        sf_writef_double (output_file, enhanced_multi_data, nslide);
-   } while (count > 0);
-   
-   free (multi_data);
-   free (prev_multi_data);
-   free (enhanced_prev);
-   free (enhanced_multi_data);
-   free (buffer);
-   free (window);
-   
-   /* destroy FFT plan and free memory */
-   fftw_destroy_plan (fft_forw);
-   fftw_destroy_plan (fft_back);
-   //fftw_free (fft_in);
-   //fftw_free (fft_out);
-       
-  return 0;
-}
-
 double * init_buffer_dbl(size_t size)
 {
   double * ptr = (double *) malloc (sizeof(* ptr) * size);
@@ -233,4 +120,123 @@ void multiply_arrays_dbl(double * array1, double * array2, double * output_array
   int i;
   for (i = 0; i < len; i++)
     output_array [i] = array1 [i] * array2 [i];
+}
+
+/* calc_magnitude */
+void calc_magnitude (const double * freq, int fft_size, double * magnitude)
+{
+  int i;
+
+    for (i = 0; i <= fft_size/2; i++) {
+          if (i == 0 || (i == fft_size/2 && (fft_size % 2 == 0))) /* fft_size is even */
+              magnitude [i] = sqrt (freq [i] * freq [i]);
+          else
+              magnitude [i] = sqrt(freq [i] * freq [i] + freq [fft_size - i] * freq [fft_size - i]);
+           }
+
+   return;
+}
+
+/* calc_phase */
+void calc_phase (const double * freq, int fft_size, double * phase)
+{
+  int i;
+
+    for (i = 0; i <= fft_size/2; i++) {
+          if (i == 0 || (i == fft_size/2 && (fft_size % 2 == 0))) /* fft_size is even */
+              phase [i] = complex_argument (freq [i], 0.0);
+          else
+              phase [i] = complex_argument (freq [i], freq [fft_size - i]);
+           }
+   return;
+}
+
+/* calc_power_spectrum */
+double calc_power_spectrum (const double * magnitude, int fft_size, double * power_spectrum)
+{
+  double norm_ps = 0;
+  int i;
+
+    for (i = 0; i <= fft_size/2; i++) {
+           power_spectrum [i] =  magnitude [i] * magnitude [i];
+	   norm_ps += power_spectrum [i];
+    }
+
+   return norm_ps;
+}
+
+/* calc_fft_complex_data */
+void calc_fft_complex_data (const double * magnitude, const double * phase, int fft_size, double * freq)
+{
+  int i;
+
+    for (i = 0; i <= fft_size/2; i++) {
+          if (i == 0 || (i == fft_size/2 && (fft_size % 2 == 0))) /* fft_size is even */
+              freq [i] = magnitude [i];
+          else {
+              freq [i] = magnitude [i] * cos(phase [i]);
+              freq [fft_size - i] = magnitude [i] * sin(phase [i]);
+          }
+    }
+
+   return;
+}
+
+/* multiply_fft_spec_with_gain */
+void multiply_fft_spec_with_gain (const double * gain, int fft_size, double * freq)
+{
+  int i;
+
+    for (i = 0; i <= fft_size/2; i++) {
+          if (i == 0 || (i == fft_size/2 && (fft_size % 2 == 0))) /* fft_size is even */
+              freq [i] *= gain [i];
+          else {
+              freq [i] *= gain [i];
+              freq [fft_size - i] *= gain [i];
+          }
+    }
+
+   return;
+}
+
+double complex_argument (const double real, const double imag)
+{
+   if (real > 0)
+     return (atan(imag / real));
+   if ((real < 0) && (imag >= 0))
+     return (atan(imag / real) + M_PI);
+   if ((real < 0) && (imag < 0))
+     return (atan(imag / real) - M_PI);
+   if ((real == 0) && (imag > 0))
+     return (M_PI / 2);
+   if ((real == 0) && (imag < 0))
+     return (- M_PI / 2);
+   
+   return 0;
+}
+
+double check_nan (double number)
+{
+   if (isnan(number) || isinf(number))
+    return 0.0;
+   
+   return number;
+}
+
+char * show_time(int samplerate, int samples)
+{
+   static char time_buff [15];
+   int hours, minutes;
+   double seconds;
+      
+   seconds = (double) samples / samplerate;
+   
+   minutes = seconds / 60;
+   seconds -= minutes * 60;
+   
+   hours = minutes / 60;
+   minutes -= hours * 60;
+   
+   sprintf(time_buff, "%02d:%02d:%06.3f", hours, minutes, seconds);
+   return time_buff;
 }

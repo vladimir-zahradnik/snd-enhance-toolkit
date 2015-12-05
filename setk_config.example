@@ -30,10 +30,24 @@
 
 # Type of window function
 # Uncomment to enable
-# Window types: hamming [0], hanning [1], blackman [2], bartlett [3], triangular [4] or boxcar [5]
+# Window types: hamming, hann, blackman, bartlett, triangular, rectangular or nutall
 # Default: hamming window
-# Example: window [number], e.g. window 0
-# window 0
+# Example: window triangular
+# window hamming
+
+# Type of noise estimation algorithm
+# Uncomment to enable
+# Noise estimation algorithms: vad, hirsch, doblinger, mcra, mcra2
+# Default: VAD estimation
+# Example: noise_estimation mcra2
+# noise_estimation vad
+
+# Type of sound enhancement algorithm
+# Uncomment to enable
+# Sound estimation algorithms: specsub, mmse, wiener-as, wiener-iter, residual
+# Default: Spectral substraction
+# Example: sound_enhancement wiener-iter
+# sound_enhancement specsub
 
 # Downmix to mono (default: false)
 # Uncomment to enable

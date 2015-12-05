@@ -9,23 +9,28 @@ CC = gcc
 CFLAGS = $(COMPILERFLAGS) $(INCLUDE)
 LIBRARIES =
 
-OBJ = toolkit.o common.o window.o snd_enhance.o noise_est.o
+OBJ = toolkit.o common.o window.o snd_enhance.o noise_est.o tbessi.o lpc.o
 PROGRAM = snd-enhance
 
 main:$(OBJ)
 	$(CC) `pkg-config --libs sndfile fftw3` -o $(PROGRAM) $(CFLAGS) $(OBJ) $(LIBDIR) $(LIBRARIES)
 
-toolkit.o : toolkit.c toolkit.h common.c common.h
+toolkit.o : toolkit.c toolkit.h common.h snd_enhance.h noise_est.h window.h
 	$(CC) -c toolkit.c  $(INCLUDES) $(OPTIONS)
 
-common.o : common.c common.h window.c window.h snd_enhance.c snd_enhance.h
+common.o : common.c common.h
 	$(CC) -c common.c  $(INCLUDES) $(OPTIONS)
-snd_enhance.o : snd_enhance.c snd_enhance.h common.h noise_est.c noise_est.h
-	$(CC) -c snd_enhance.c  $(INCLUDES) $(OPTIONS)
-noise_est.o : noise_est.c noise_est.h common.h
-	$(CC) -c noise_est.c  $(INCLUDES) $(OPTIONS)
 window.o : window.c window.h
 	$(CC) -c window.c  $(INCLUDES) $(OPTIONS)
+snd_enhance.o : snd_enhance.c snd_enhance.h noise_est.h tbessi.h lpc.h
+	$(CC) -c snd_enhance.c  $(INCLUDES) $(OPTIONS)
+
+noise_est.o : noise_est.c noise_est.h
+	$(CC) -c noise_est.c  $(INCLUDES) $(OPTIONS)
+tbessi.o : tbessi.c tbessi.h
+	$(CC) -c tbessi.c  $(INCLUDES) $(OPTIONS)
+lpc.o : lpc.c lpc.h
+	$(CC) -c lpc.c  $(INCLUDES) $(OPTIONS)
 
 .PHONY : clean
 

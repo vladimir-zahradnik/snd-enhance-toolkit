@@ -1,0 +1,52 @@
+Sound Enhancement Toolkit Changelog:
+
+Version 0.10 (04/10/11)
+- fixed serious bug in iterative Wiener filter, which caused garbage output
+
+Version 0.9 (03/04/11)
+- added MCRA 2 noise estimation algorithm
+- added samplerate parameter in noise estimation and sound enhancement function prototypes
+- code cleanup
+
+Version 0.8 (03/03/11)
+- added MCRA noise estimation algorithm
+
+Version 0.7 (03/02/11)
+- added option residual output - estimated noise is saved into output file instead of enhanced speech,
+  useful when testing noise estimation algorithms efficiency
+- added doblinger noise estimation algorithm
+- improvements and optimization in doblinger noise est.
+
+Version 0.6 (02/27/11)
+- fixed bug in wiener-iter
+
+Version 0.5 (02/26/11)
+- added basic iterative wiener filter (wiener-iter)
+- improved wiener-as
+- optimized processing
+
+Version 0.4 (02/25/11)
+- changes in file_info() - show track duration, samplerate and channel number
+- added function show_time() - calculates elapsed time in seconds based on frames and samplerate
+- fixes and improvements in specsub
+- simple progress bar
+- fixed wiener-as algorithm
+
+Version 0.3 (02/24/11)
+- fixed bugs in MMSE which caused MMSE to not work properly
+- MMSE and SPECSUB require less memory
+- code cleanup in MMSE and Specsub
+
+Version 0.2 (02/23/11)
+- added MMSE sound enhancement algorithm
+- minor fixes and improvements
+
+Version 0.1
+- initial release
+- implemented spectral substractive algorithm
+- implemented wiener filer with a priori snr estimation, has bugs
+- implemented seven types of window function
+- fully functional menu
+- ability to select noise estimation and sound enhancement algorithm
+- implemented simple VAD detection based noise estimation
+- implemented hirsch method of noise estimation 

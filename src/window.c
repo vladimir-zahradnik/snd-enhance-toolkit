@@ -1,103 +1,138 @@
 /*************************************************************
- * This file implements basic windowing functions            * 
- *************************************************************/
-
-#include <stdio.h>
-#include "window.h"
+**
+**      Window function prototypes from :
+**
+**      http://en.wikipedia.org/wiki/Window_function
+**
+**************************************************************/
+#include <stdlib.h>
 #include <math.h>
+#include <string.h>
+#include "window.h"
 #include "i18n.h"
 
-/* Declarations of Window Functions used in this module */
-
-/* hamming window */
-static double hamming(double * data, int datalen);
-
-/* hanning window */
-static double hanning(double * data, int datalen);
-
-/* blackman window */
-static double blackman(double * data, int datalen);
-
-/* bartlett window */
-static double bartlett(double * data, int datalen);
-
-/* triangular window */
-static double triang(double * data, int datalen);
-
-/* boxcar window */
-static double boxcar(double * data, int datalen);
-
-/* --------------------------------------- */
-
-/* calculate window */
-double calc_window (double * data, int datalen, const char * window_name)
+window_func_t parse_window_type (const char * name, bool verbose)
 {
-  if (window_name == NULL) {
-    puts(_("\nNo window type was specified. Using default.\n"));
-    return (hamming (data, datalen));
+  if (name == NULL) {
+    if (verbose == true)
+        puts(_("No window type was specified. Using default."));
+    return calc_hamming_window;
   }
-  if (strcmp (window_name, "hamming") == 0)
-    return ( hamming (data, datalen) );
-  if (strcmp (window_name, "hanning") == 0)
-    return ( hanning (data, datalen) );
-  if (strcmp (window_name, "blackman") == 0)
-    return ( blackman (data, datalen) );
-  if (strcmp (window_name, "bartlett") == 0)
-    return ( bartlett (data, datalen) );
-  if (strcmp (window_name, "triangular") == 0)
-    return ( triang (data, datalen) );
-  if (strcmp (window_name, "boxcar") == 0)
-    return ( boxcar (data, datalen) );
+  if (strcmp (name, "hamming") == 0)
+    return calc_hamming_window;
+  if (strcmp (name, "hann") == 0)
+    return calc_hann_window;
+  if (strcmp (name, "blackman") == 0)
+    return calc_blackman_window;
+  if (strcmp (name, "bartlett") == 0)
+    return calc_bartlett_window;
+  if (strcmp (name, "triangular") == 0)
+    return calc_triangular_window;
+  if (strcmp (name, "rectangular") == 0)
+    return calc_rectangular_window;
+  if (strcmp (name, "nuttall") == 0)
+    return calc_nuttall_window;
   
-  puts(_("\nError: Bad window type. Using default.\n\n"));
-  return (hamming (data, datalen));
+  if (verbose == true)
+      puts(_("Error: Unknown window type. Using default."));
+  return calc_hamming_window;
+}
+
+char * get_window_name (const char * name)
+{
+  if (name == NULL) {
+    return (_("Hamming window (default)"));
+  }
+  if (strcmp (name, "hamming") == 0)
+    return (_("Hamming window"));
+  if (strcmp (name, "hann") == 0)
+    return (_("Hann window"));
+  if (strcmp (name, "blackman") == 0)
+    return (_("Blackman window"));
+  if (strcmp (name, "bartlett") == 0)
+    return (_("Bartlett window"));
+  if (strcmp (name, "triangular") == 0)
+    return (_("Triangular window"));
+  if (strcmp (name, "rectangular") == 0)
+    return (_("Rectangular window"));
+  if (strcmp (name, "nuttall") == 0)
+    return (_("Nutall window"));
+  
+  return (_("Hamming window (default)"));
+}
+
+/* apply_window */
+double apply_window (double * data, int datalen, window_func_t calc_window)
+{
+   static double window [WINDOW_MAX];
+   static int window_len = 0;
+   static double winGain;
+   int k;
+
+   if (window_len != datalen) {
+        window_len = datalen;
+        if (datalen > ARRAY_LEN (window)) {
+             printf (_("%s : datalen >  MAX_HEIGHT\n"), __func__);
+             exit (1);
+        };
+
+        winGain = calc_window (window, datalen);
+      };
+
+   for (k = 0; k < datalen; k++)
+         data [k] *= window [k];
+
+   return winGain;
 }
 
 /* hamming window */
-static double hamming(double * data, int datalen)
+double calc_hamming_window (double * data, int datalen)
 {
-  int n;
   double winGain = 0.0;
+  int n;
   
   for (n = 0; n < datalen; n++) {
     data [n] = ((n >= 0) && (n <= datalen-1)) ? 0.54-0.46 * cos (2 * M_PI * n / (datalen-1)) : 0;
     winGain += data [n];
   }
-  return winGain;  
+  
+  return winGain;
 }
 
-/* hanning window */
-static double hanning(double * data, int datalen)
+/* hann window */
+double calc_hann_window (double * data, int datalen)
 {
-  int n;
   double winGain = 0.0;
+  int n;
   
   for (n = 0; n < datalen; n++) {
     data [n] = ((n >= 0) && (n <= datalen-1)) ? 0.5 * (1 - cos (2 * M_PI * (n+1) / (datalen+1))) : 0;
     winGain += data [n];
   }
+  
   return winGain;
 }
 
 /* blackman window */
-static double blackman(double * data, int datalen)
+double calc_blackman_window (double * data, int datalen)
 {
-  int n;
   double winGain = 0.0;
+  int n;
   
   for (n = 0; n < datalen; n++) {
      data [n] = ((n >= 0) && (n <= datalen-1)) ? 
           0.42-0.5 * cos (2 * M_PI * n / (datalen-1)) + 0.08 * cos (4 * M_PI * n / (datalen-1)) : 0;
      winGain += data [n];
   }
+  
   return winGain;
 }
 
 /* bartlett window */
-static double bartlett(double * data, int datalen)
+double calc_bartlett_window (double * data, int datalen)
 {
-  int n;
   double winGain = 0.0;
+  int n;
   
   for (n = 0; n < datalen; n++) {
    if ((datalen % 2) == 0)
@@ -120,14 +155,15 @@ static double bartlett(double * data, int datalen)
     }
     winGain += data [n];
   }
+  
   return winGain;
 }
 
 /* triangular window */
-static double triang(double * data, int datalen)
+double calc_triangular_window (double * data, int datalen)
 {
-  int n;
   double winGain = 0.0;
+  int n;
   
   for (n = 0; n < datalen; n++) {
     if ((datalen % 2) == 0)
@@ -150,18 +186,38 @@ static double triang(double * data, int datalen)
     }
     winGain += data [n];
   }
+  
   return winGain;
 }
 
-/* boxcar window */
-static double boxcar(double * data, int datalen)
+/* rectangular window */
+double calc_rectangular_window (double * data, int datalen)
 {
-  int n;
   double winGain = 0.0;
+  int n;
   
   for (n = 0; n < datalen; n++) {
     data [n] = ((n >= 0) && (n < datalen)) ? 1 : 0;
     winGain += data [n];
   }
+  
   return winGain;
 }
+
+/* nuttall_window */
+double calc_nuttall_window (double * data, int datalen)
+{
+   const double a [4] = { 0.355768, 0.487396, 0.144232, 0.012604 };
+   double scale, winGain;
+   int n;
+
+   for (n = 0 ; n < datalen ; n++) {
+        scale = M_PI * n / (datalen - 1) ;
+
+        data [n] = a [0] - a [1] * cos (2.0 * scale) + a [2] * cos (4.0 * scale) - a [3] * cos (6.0 * scale);
+	winGain += data [n];
+   };
+
+  return winGain;
+}
+
