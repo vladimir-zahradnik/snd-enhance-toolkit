@@ -27,28 +27,28 @@
 #define FFT_MAX           2048              /* maximum size of FFT transform */
 #define WINDOW_MAX        FFT_MAX/2         /* maximum size of window */
 
-#define OPTIMAL_FFT_SIZE(x)              (2 * pow(2, ceil(log2(x)))) 
+#define OPTIMAL_FFT_SIZE(x)              (2 * pow(2, ceil(log2(x))))
 
-#define WINDOW_SIZE(x,y)                 (floor(((x) * (y) / 1000)))
+#define WINDOW_SIZE(x, y)                 (floor(((x) * (y) / 1000)))
 
 #define ARRAY_LEN(x)                     ((int) (sizeof (x) / sizeof (x [0])))
-#define MAX(x,y)                         ((x) > (y) ? (x) : (y))
-#define MIN(x,y)                         ((x) < (y) ? (x) : (y))
+#define MAX(x, y)                         ((x) > (y) ? (x) : (y))
+#define MIN(x, y)                         ((x) < (y) ? (x) : (y))
 
 
 /* Boolean support */
 #if HAVE__BOOL
-  #include <stdbool.h>
+#include <stdbool.h>
 #else
-  #ifndef bool
-  #define bool int
-  #endif
-  #ifndef false
-  #define false 0
-  #endif
-  #ifndef true
-  #define true (!false)
-  #endif
+#ifndef bool
+#define bool int
+#endif
+#ifndef false
+#define false 0
+#endif
+#ifndef true
+#define true (!false)
+#endif
 #endif
 
 #ifndef istrue_bool
@@ -56,41 +56,43 @@
 #endif
 
 /* sfx_mix_mono_read_double */
-extern sf_count_t sfx_mix_mono_read_double (SNDFILE * file, double * data, sf_count_t datalen);
+extern sf_count_t sfx_mix_mono_read_double(SNDFILE *file, double *data, sf_count_t datalen);
 
 /* separate_channels_double */
-extern int separate_channels_double (double * multi_data, double * single_data, int frames, int channels, int channel_number);
+extern int separate_channels_double(double *multi_data, double *single_data, int frames, int channels,
+                                    int channel_number);
 
 /* combine_channels_double */
-extern int combine_channels_double (double * multi_data, double * single_data, int frames, int channels, int channel_number);
+extern int combine_channels_double(double *multi_data, double *single_data, int frames, int channels,
+                                   int channel_number);
 
 /* create dynamic double array */
-extern double * init_buffer_dbl(size_t size);
+extern double *init_buffer_dbl(size_t size);
 
 /* multiply two arrays */
-extern void multiply_arrays_dbl(double * array1, double * array2, double * output_array, int len);
+extern void multiply_arrays_dbl(double *array1, double *array2, double *output_array, int len);
 
 /* calc_magnitude */
-extern void calc_magnitude (const double * freq, int fft_size, double * magnitude);
+extern void calc_magnitude(const double *freq, int fft_size, double *magnitude);
 
 /* calc_phase */
-extern void calc_phase (const double * freq, int fft_size, double * phase);
+extern void calc_phase(const double *freq, int fft_size, double *phase);
 
 /* calc_power_spectrum */
-extern double calc_power_spectrum (const double * magnitude, int fft_size, double * power_spectrum);
+extern double calc_power_spectrum(const double *magnitude, int fft_size, double *power_spectrum);
 
 /* recreate complex array from magnitude and phase arrays */
-extern void calc_fft_complex_data (const double * magnitude, const double * phase, int fft_size, double * freq);
+extern void calc_fft_complex_data(const double *magnitude, const double *phase, int fft_size, double *freq);
 
 /* multiply_fft_spec_with_gain */
-extern void multiply_fft_spec_with_gain (const double * gain, int fft_size, double * freq);
+extern void multiply_fft_spec_with_gain(const double *gain, int fft_size, double *freq);
 
 /* phase of complex number */
-extern double complex_argument (const double real, const double imag);
+extern double complex_argument(const double real, const double imag);
 
-extern double check_nan (double number);
+extern double check_nan(double number);
 
 /* prints time in seconds calculated based on elapsed frames and framerate */
-extern char * show_time(int samplerate, int samples);
+extern char *show_time(int samplerate, int samples);
 
 #endif

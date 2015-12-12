@@ -54,84 +54,84 @@ Carsten Bormann
 /* Input : n elements of time doamin data
    Output: m lpc coefficients, excitation energy */
 
-double lpc_from_data(double *data,double *lpc,int n,int m){
-  double *aut=alloca(sizeof(*aut)*(m+1));
-  double error;
-  int i,j;
+double lpc_from_data(double *data, double *lpc, int n, int m) {
+    double *aut = alloca(sizeof(*aut) * (m + 1));
+    double error;
+    int i, j;
 
-  /* autocorrelation, p+1 lag coefficients */
-  j=m+1;
-  while(j--){
-    double d=0;
-    for(i=j;i<n;i++)d+=data[i]*data[i-j];
-    aut[j]=d;
-  }
-  
-  /* Generate lpc coefficients from autocorr values */
-
-  error=aut[0];
-  
-  for(i=0;i<m;i++){
-    double r= -aut[i+1];
-
-    if(error==0){
-      memset(lpc,0,m*sizeof(*lpc));
-      return 0;
+    /* autocorrelation, p+1 lag coefficients */
+    j = m + 1;
+    while (j--) {
+        double d = 0;
+        for (i = j; i < n; i++)d += data[i] * data[i - j];
+        aut[j] = d;
     }
 
-    /* Sum up this iteration's reflection coefficient; note that in
-       Vorbis we don't save it.  If anyone wants to recycle this code
-       and needs reflection coefficients, save the results of 'r' from
-       each iteration. */
+    /* Generate lpc coefficients from autocorr values */
 
-    for(j=0;j<i;j++)r-=lpc[j]*aut[i-j];
-    r/=error; 
+    error = aut[0];
 
-    /* Update LPC coefficients and total error */
-    
-    lpc[i]=r;
-    for(j=0;j<i/2;j++){
-      double tmp=lpc[j];
+    for (i = 0; i < m; i++) {
+        double r = -aut[i + 1];
 
-      lpc[j]+=r*lpc[i-1-j];
-      lpc[i-1-j]+=r*tmp;
+        if (error == 0) {
+            memset(lpc, 0, m * sizeof(*lpc));
+            return 0;
+        }
+
+        /* Sum up this iteration's reflection coefficient; note that in
+           Vorbis we don't save it.  If anyone wants to recycle this code
+           and needs reflection coefficients, save the results of 'r' from
+           each iteration. */
+
+        for (j = 0; j < i; j++)r -= lpc[j] * aut[i - j];
+        r /= error;
+
+        /* Update LPC coefficients and total error */
+
+        lpc[i] = r;
+        for (j = 0; j < i / 2; j++) {
+            double tmp = lpc[j];
+
+            lpc[j] += r * lpc[i - 1 - j];
+            lpc[i - 1 - j] += r * tmp;
+        }
+        if (i % 2)lpc[j] += lpc[j] * r;
+
+        error *= 1.f - r * r;
     }
-    if(i%2)lpc[j]+=lpc[j]*r;
 
-    error*=1.f-r*r;
-  }
+    /* we need the error value to know how big an impulse to hit the
+       filter with later */
 
-  /* we need the error value to know how big an impulse to hit the
-     filter with later */
-  
-  return error;
+    return error;
 }
 
-void lpc_predict(double *coeff,double *prime,int m,
-                     double *data,long n){
+void lpc_predict(double *coeff, double *prime, int m,
+                 double *data, long n) {
 
-  /* in: coeff[0...m-1] LPC coefficients 
-         prime[0...m-1] initial values (allocated size of n+m-1)
-    out: data[0...n-1] data samples */
+    /* in: coeff[0...m-1] LPC coefficients
+           prime[0...m-1] initial values (allocated size of n+m-1)
+      out: data[0...n-1] data samples */
 
-  long i,j,o,p;
-  double y;
-  double *work=alloca(sizeof(*work)*(m+n));
+    long i, j, o, p;
+    double y;
+    double *work = alloca(sizeof(*work) * (m + n));
 
-  if(!prime)
-    for(i=0;i<m;i++)
-      work[i]=0.f;
-  else
-    for(i=0;i<m;i++)
-      work[i]=prime[i];
+    if (!prime)
+        for (i = 0; i < m; i++)
+            work[i] = 0.f;
+    else
+        for (i = 0; i < m; i++)
+            work[i] = prime[i];
 
-  for(i=0;i<n;i++){
-    y=0;
-    o=i;
-    p=m;
-    for(j=0;j<m;j++)
-      y-=work[o++]*coeff[--p];
-    
-    data[i]=work[o]=y;
-  }
+    for (i = 0; i < n; i++) {
+        y = 0;
+        o = i;
+        p = m;
+        for (j = 0; j < m; j++)
+            y -= work[o++] * coeff[--p];
+
+        data[i] = work[o] = y;
+    }
 }

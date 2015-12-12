@@ -19,9 +19,9 @@
 #define HAVE_LPC_H
 
 /* simple linear scale LPC code */
-extern double lpc_from_data(double *data,double *lpc,int n,int m);
+extern double lpc_from_data(double *data, double *lpc, int n, int m);
 
-extern void lpc_predict(double *coeff,double *prime,int m,
-			       double *data,long n);
+extern void lpc_predict(double *coeff, double *prime, int m,
+                        double *data, long n);
 
 #endif

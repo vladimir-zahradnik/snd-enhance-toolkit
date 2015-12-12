@@ -27,6 +27,6 @@
 
 void setk_init_i18n(void) {
 
-        bindtextdomain(GETTEXT_PACKAGE, PULSE_LOCALEDIR);
-        bind_textdomain_codeset(GETTEXT_PACKAGE, "UTF-8");
+    bindtextdomain(GETTEXT_PACKAGE, PULSE_LOCALEDIR);
+    bind_textdomain_codeset(GETTEXT_PACKAGE, "UTF-8");
 }
