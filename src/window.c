@@ -13,7 +13,7 @@
 
 window_func_t parse_window_type(const char *name, bool verbose) {
     if (name == NULL) {
-        if (verbose == true)
+        if (verbose)
             puts(_("No window type was specified. Using default."));
         return calc_hamming_window;
     }
@@ -32,7 +32,7 @@ window_func_t parse_window_type(const char *name, bool verbose) {
     if (strcmp(name, "nuttall") == 0)
         return calc_nuttall_window;
 
-    if (verbose == true)
+    if (verbose)
         puts(_("Error: Unknown window type. Using default."));
     return calc_hamming_window;
 }
@@ -60,11 +60,10 @@ char *get_window_name(const char *name) {
 }
 
 /* apply_window */
-double apply_window(double *data, int datalen, window_func_t calc_window) {
+double apply_window(double *data, size_t datalen, window_func_t calc_window) {
     static double window[WINDOW_MAX];
-    static int window_len = 0;
+    static size_t window_len = 0;
     static double winGain;
-    int k;
 
     if (window_len != datalen) {
         window_len = datalen;
@@ -76,18 +75,17 @@ double apply_window(double *data, int datalen, window_func_t calc_window) {
         winGain = calc_window(window, datalen);
     };
 
-    for (k = 0; k < datalen; k++)
-        data[k] *= window[k];
+    for (size_t n = 0; n < datalen; ++n)
+        data[n] *= window[n];
 
     return winGain;
 }
 
 /* hamming window */
-double calc_hamming_window(double *data, int datalen) {
+double calc_hamming_window(double *data, size_t datalen) {
     double winGain = 0.0;
-    int n;
 
-    for (n = 0; n < datalen; n++) {
+    for (size_t n = 0; n < datalen; ++n) {
         data[n] = ((n >= 0) && (n <= datalen - 1)) ? 0.54 - 0.46 * cos(2 * M_PI * n / (datalen - 1)) : 0;
         winGain += data[n];
     }
@@ -96,11 +94,10 @@ double calc_hamming_window(double *data, int datalen) {
 }
 
 /* hann window */
-double calc_hann_window(double *data, int datalen) {
+double calc_hann_window(double *data, size_t datalen) {
     double winGain = 0.0;
-    int n;
 
-    for (n = 0; n < datalen; n++) {
+    for (size_t n = 0; n < datalen; ++n) {
         data[n] = ((n >= 0) && (n <= datalen - 1)) ? 0.5 * (1 - cos(2 * M_PI * (n + 1) / (datalen + 1))) : 0;
         winGain += data[n];
     }
@@ -109,11 +106,10 @@ double calc_hann_window(double *data, int datalen) {
 }
 
 /* blackman window */
-double calc_blackman_window(double *data, int datalen) {
+double calc_blackman_window(double *data, size_t datalen) {
     double winGain = 0.0;
-    int n;
 
-    for (n = 0; n < datalen; n++) {
+    for (size_t n = 0; n < datalen; n++) {
         data[n] = ((n >= 0) && (n <= datalen - 1)) ?
                   0.42 - 0.5 * cos(2 * M_PI * n / (datalen - 1)) + 0.08 * cos(4 * M_PI * n / (datalen - 1)) : 0;
         winGain += data[n];
@@ -123,11 +119,10 @@ double calc_blackman_window(double *data, int datalen) {
 }
 
 /* bartlett window */
-double calc_bartlett_window(double *data, int datalen) {
+double calc_bartlett_window(double *data, size_t datalen) {
     double winGain = 0.0;
-    int n;
 
-    for (n = 0; n < datalen; n++) {
+    for (size_t n = 0; n < datalen; ++n) {
         if ((datalen % 2) == 0) { /* n is even */
             if ((n >= 0) && (n <= datalen / 2 - 1))
                 data[n] = 2.0 * n / (datalen - 1);
@@ -151,11 +146,10 @@ double calc_bartlett_window(double *data, int datalen) {
 }
 
 /* triangular window */
-double calc_triangular_window(double *data, int datalen) {
+double calc_triangular_window(double *data, size_t datalen) {
     double winGain = 0.0;
-    int n;
 
-    for (n = 0; n < datalen; n++) {
+    for (size_t n = 0; n < datalen; ++n) {
         if ((datalen % 2) == 0) { /* n is even */
             if ((n >= 0) && (n <= datalen / 2 - 1))
                 data[n] = (2.0 * n + 1) / datalen;
@@ -179,11 +173,10 @@ double calc_triangular_window(double *data, int datalen) {
 }
 
 /* rectangular window */
-double calc_rectangular_window(double *data, int datalen) {
+double calc_rectangular_window(double *data, size_t datalen) {
     double winGain = 0.0;
-    int n;
 
-    for (n = 0; n < datalen; n++) {
+    for (size_t n = 0; n < datalen; ++n) {
         data[n] = ((n >= 0) && (n < datalen)) ? 1 : 0;
         winGain += data[n];
     }
@@ -192,12 +185,12 @@ double calc_rectangular_window(double *data, int datalen) {
 }
 
 /* nuttall_window */
-double calc_nuttall_window(double *data, int datalen) {
+double calc_nuttall_window(double *data, size_t datalen) {
     const double a[4] = {0.355768, 0.487396, 0.144232, 0.012604};
-    double scale, winGain;
-    int n;
+    double scale;
+    double winGain = 0.0;
 
-    for (n = 0; n < datalen; n++) {
+    for (size_t n = 0; n < datalen; ++n) {
         scale = M_PI * n / (datalen - 1);
 
         data[n] = a[0] - a[1] * cos(2.0 * scale) + a[2] * cos(4.0 * scale) - a[3] * cos(6.0 * scale);

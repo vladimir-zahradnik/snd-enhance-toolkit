@@ -22,16 +22,13 @@
 #include "common.h"
 #include "toolkit.h"
 #include "snd_enhance.h"
-#include "noise_est.h"
 #include "window.h"
 #include "i18n.h"
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
 #include <errno.h>
 #include <getopt.h>
-#include <fftw3.h>
 
 static pl_rule setk_conf_rules[] = {
         {"input_file",        PLRT_STRING,  offsetof(setk_options_t, input_filename)},
@@ -191,7 +188,7 @@ int main(int argc, char **argv) {
                 opts.frame_duration = atoi(optarg);
                 break;
             case ARG_FFT_SIZE:  /* optional */
-                opts.fft_size = atoi(optarg);
+                opts.fft_size = (size_t) atoi(optarg);
                 break;
             case ARG_OVERLAP:  /* optional, default 50 % */
                 opts.overlap = atoi(optarg);
@@ -211,7 +208,6 @@ int main(int argc, char **argv) {
             case 'h':   /* help */
                 help(argv[0]);
                 return 0;
-                break;
             case 'c':   /* custom config */
                 load_config(optarg, &opts);
                 break;
@@ -295,7 +291,7 @@ static void check_int_range(const char *name, int value, int lower, int upper) {
 /* parse arguments */
 static void parse_arguments(setk_options_t *args) {
     check_int_range("frame duration", args->frame_duration, 10, 30);
-    check_int_range("fft size", args->fft_size, 0, FFT_MAX);
+    check_int_range("fft size", (int) args->fft_size, 0, FFT_MAX);
     check_int_range("overlap percentage", args->overlap, 0, 99);
 
     /* no input file was specified */
@@ -329,13 +325,11 @@ static void process_audio(setk_options_t *args) {
     SNDFILE *input_file, *output_file;
     SF_INFO info;
     snd_read_func_t sndfile_read;
-    int noverlap, nslide, ch;
+    int noverlap, nslide;
     sf_count_t count, frames_read = 0;
     double *multi_data, *prev_multi_data, *window;
     double *fft_data, *es_old_multi;
     double winGain;
-    int i;
-
     sndfile_read = sf_readf_double;
 
     /* open input file */
@@ -363,13 +357,13 @@ static void process_audio(setk_options_t *args) {
     } while ((args->fft_size) > FFT_MAX);
 
     /* Force output to mono. */
-    if ((args->downmix) == true) {
+    if ((args->downmix)) {
         info.channels = 1;
         sndfile_read = sfx_mix_mono_read_double;
     }
 
     /* print file info */
-    if (args->verbosity == true)
+    if (args->verbosity)
         file_info(args, info);
 
     /* open output file */
@@ -390,12 +384,12 @@ static void process_audio(setk_options_t *args) {
     sf_set_string(output_file, SF_STR_SOFTWARE, "Sound Enhancement Toolkit");
     sf_set_string(output_file, SF_STR_COPYRIGHT, "No copyright.");
 
-    noverlap = floor((args->window_size) * (args->overlap) / 100);
-    nslide = (args->window_size) - noverlap;
+    noverlap = (int) floor((args->window_size) * (args->overlap) / 100);
+    nslide = (int) (args->window_size) - noverlap;
 
-    multi_data = init_buffer_dbl((args->window_size) * info.channels);
-    prev_multi_data = init_buffer_dbl(noverlap * info.channels);
-    es_old_multi = init_buffer_dbl(nslide * info.channels);
+    multi_data = init_buffer_dbl((size_t) (args->window_size) * info.channels);
+    prev_multi_data = init_buffer_dbl((size_t) noverlap * info.channels);
+    es_old_multi = init_buffer_dbl((size_t) nslide * info.channels);
 
     /* Window function */
     window_function = parse_window_type(args->window_type, args->verbosity);
@@ -410,12 +404,12 @@ static void process_audio(setk_options_t *args) {
     /* fft transform data */
     fft_data = init_buffer_dbl(args->fft_size);
 
-    fftw_plan fft_forw = fftw_plan_r2r_1d(args->fft_size, fft_data, fft_data, FFTW_R2HC, FFTW_MEASURE);
-    fftw_plan fft_back = fftw_plan_r2r_1d(args->fft_size, fft_data, fft_data, FFTW_HC2R, FFTW_MEASURE);
+    fftw_plan fft_forw = fftw_plan_r2r_1d((int) args->fft_size, fft_data, fft_data, FFTW_R2HC, FFTW_MEASURE);
+    fftw_plan fft_back = fftw_plan_r2r_1d((int) args->fft_size, fft_data, fft_data, FFTW_HC2R, FFTW_MEASURE);
 
     do {
         if (frames_read == 0) {
-            if ((count = sndfile_read(input_file, multi_data, args->window_size)) <= 0)
+            if ((count = sndfile_read(input_file, multi_data, (int) args->window_size)) <= 0)
                 exit(1);
             memcpy((void *) prev_multi_data, (void *) (multi_data + nslide * info.channels),
                    sizeof(*multi_data) * noverlap * info.channels);
@@ -430,10 +424,10 @@ static void process_audio(setk_options_t *args) {
         frames_read += count;
         printf("%s\r", show_time(info.samplerate, (int) frames_read));
 
-        for (ch = 0; ch < info.channels; ch++) {
+        for (int ch = 0; ch < info.channels; ++ch) {
             memset(fft_data, 0, sizeof(*fft_data) * (args->fft_size)); /* initialize fft array to zero values */
 
-            separate_channels_double(multi_data, fft_data, args->window_size, info.channels, ch);
+            separate_channels_double(multi_data, fft_data, (int) args->window_size, info.channels, ch);
 
             winGain = apply_window(fft_data, args->window_size, window_function);
             winGain = nslide / winGain;
@@ -442,11 +436,11 @@ static void process_audio(setk_options_t *args) {
                               info.samplerate);
 
             /* Add-and-Overlap */
-            for (i = 0; i < nslide; i++) {
+            for (int i = 0; i < nslide; ++i) {
                 fft_data[i] = winGain * (fft_data[i] / (args->fft_size) + es_old_multi[ch * nslide + i]);
             }
 
-            for (i = 0; i < nslide; i++) {
+            for (int i = 0; i < nslide; ++i) {
                 es_old_multi[ch * nslide + i] = fft_data[i + noverlap] / (args->fft_size);
             }
 
@@ -456,7 +450,7 @@ static void process_audio(setk_options_t *args) {
         sf_writef_double(output_file, multi_data, nslide);
     } while (count > 0);
 
-    if (args->verbosity == true)
+    if (args->verbosity)
         puts(_("\n\nFinished audio processing."));
 
     fftw_destroy_plan(fft_forw);
@@ -485,8 +479,8 @@ static void file_info(setk_options_t *args, SF_INFO info) {
     printf(_("Downmix to mono: %s\n"), istrue_bool(args->downmix));
     printf(_("Frame Duration: %d ms\n"), args->frame_duration);
     printf(_("Overlap: %d %%\n"), args->overlap);
-    printf(_("Window Size: %d samples\n"), args->window_size);
-    printf(_("FFT size: %d samples\n"), args->fft_size);
+    printf(_("Window Size: %d samples\n"), (int) args->window_size);
+    printf(_("FFT size: %d samples\n"), (int) args->fft_size);
     printf(_("Window Function: %s\n"), get_window_name(args->window_type));
     printf(_("Noise Estimation Algorithm: %s\n"), get_noise_est_name(args->noise_est_type));
     printf(_("Sound Enhancement Algorithm: %s\n"), get_snd_enhance_name(args->snd_enhance_type));
@@ -552,7 +546,7 @@ static int parse_line(char *line, const char *split, pl_rule *rules, void *data)
     /* Otherwise it is already terminated above */
 
     /* Walk through all the rules */
-    for (r = 0; rules[r].type != PLRT_END; r++) {
+    for (r = 0; rules[r].type != PLRT_END; ++r) {
         len = (int) strlen(rules[r].title);
         if (strncmp(line, rules[r].title, len) != 0) continue;
 
@@ -583,6 +577,10 @@ static int parse_line(char *line, const char *split, pl_rule *rules, void *data)
 
             case PLRT_END:
                 return 0;
+
+            default:
+                // ignore the input as it is a non-standard config statement
+                break;
         }
         return 1;
     }

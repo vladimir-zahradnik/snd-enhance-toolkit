@@ -16,7 +16,6 @@
 */
 
 #include "common.h"
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
@@ -41,7 +40,7 @@ sf_count_t sfx_mix_mono_read_double(SNDFILE *file, double *data, sf_count_t data
         return sf_read_double(file, data, datalen);
 
     static double multi_data[2048];
-    int k, ch, frames_read;
+    int frames_read;
     sf_count_t dataout = 0;
 
     while (dataout < datalen) {
@@ -53,10 +52,10 @@ sf_count_t sfx_mix_mono_read_double(SNDFILE *file, double *data, sf_count_t data
         if (frames_read == 0)
             break;
 
-        for (k = 0; k < frames_read; k++) {
+        for (int k = 0; k < frames_read; ++k) {
             double mix = 0.0;
 
-            for (ch = 0; ch < info.channels; ch++)
+            for (int ch = 0; ch < info.channels; ++ch)
                 mix += multi_data[k * info.channels + ch];
             data[dataout + k] = mix / info.channels;
         };
@@ -69,14 +68,13 @@ sf_count_t sfx_mix_mono_read_double(SNDFILE *file, double *data, sf_count_t data
 
 /* separate_channels */
 int separate_channels_double(double *multi_data, double *single_data, int frames, int channels, int channel_number) {
-    int k;
 
     if (channel_number > channels) {
         fprintf(stderr, _("This recording has only %u channels."), channels);
         exit(1);
     }
 
-    for (k = 0; k < frames; k++)
+    for (int k = 0; k < frames; ++k)
         single_data[k] = multi_data[k * channels + channel_number];
 
     return 0;
@@ -84,14 +82,13 @@ int separate_channels_double(double *multi_data, double *single_data, int frames
 
 /* combine_channels_double */
 int combine_channels_double(double *multi_data, double *single_data, int frames, int channels, int channel_number) {
-    int k;
 
     if (channel_number > channels) {
         fprintf(stderr, _("This recording has only %u channels."), channels);
         exit(1);
     }
 
-    for (k = 0; k < frames; k++)
+    for (int k = 0; k < frames; ++k)
         multi_data[k * channels + channel_number] = single_data[k];
 
     return 0;
@@ -101,7 +98,7 @@ double *init_buffer_dbl(size_t size) {
     double *ptr = (double *) malloc(sizeof(*ptr) * size);
 
     if (ptr == NULL) {
-        printf(_("\nError: malloc failed: %s\n"), strerror(errno));
+        printf(_("\nError: malloc() failed: %s\n"), strerror(errno));
         exit(1);
     }
     /* initialize array to zero */
@@ -112,16 +109,13 @@ double *init_buffer_dbl(size_t size) {
 
 /* multiply two arrays */
 void multiply_arrays_dbl(double *array1, double *array2, double *output_array, int len) {
-    int i;
-    for (i = 0; i < len; i++)
+    for (int i = 0; i < len; ++i)
         output_array[i] = array1[i] * array2[i];
 }
 
 /* calc_magnitude */
-void calc_magnitude(const double *freq, int fft_size, double *magnitude) {
-    int i;
-
-    for (i = 0; i <= fft_size / 2; i++) {
+void calc_magnitude(const double *freq, size_t fft_size, double *magnitude) {
+    for (size_t i = 0; i <= fft_size / 2; ++i) {
         if (i == 0 || (i == fft_size / 2 && (fft_size % 2 == 0))) /* fft_size is even */
             magnitude[i] = sqrt(freq[i] * freq[i]);
         else
@@ -132,10 +126,8 @@ void calc_magnitude(const double *freq, int fft_size, double *magnitude) {
 }
 
 /* calc_phase */
-void calc_phase(const double *freq, int fft_size, double *phase) {
-    int i;
-
-    for (i = 0; i <= fft_size / 2; i++) {
+void calc_phase(const double *freq, size_t fft_size, double *phase) {
+    for (size_t i = 0; i <= fft_size / 2; ++i) {
         if (i == 0 || (i == fft_size / 2 && (fft_size % 2 == 0))) /* fft_size is even */
             phase[i] = complex_argument(freq[i], 0.0);
         else
@@ -145,11 +137,10 @@ void calc_phase(const double *freq, int fft_size, double *phase) {
 }
 
 /* calc_power_spectrum */
-double calc_power_spectrum(const double *magnitude, int fft_size, double *power_spectrum) {
+double calc_power_spectrum(const double *magnitude, size_t fft_size, double *power_spectrum) {
     double norm_ps = 0;
-    int i;
 
-    for (i = 0; i <= fft_size / 2; i++) {
+    for (size_t i = 0; i <= fft_size / 2; ++i) {
         power_spectrum[i] = magnitude[i] * magnitude[i];
         norm_ps += power_spectrum[i];
     }
@@ -158,10 +149,9 @@ double calc_power_spectrum(const double *magnitude, int fft_size, double *power_
 }
 
 /* calc_fft_complex_data */
-void calc_fft_complex_data(const double *magnitude, const double *phase, int fft_size, double *freq) {
-    int i;
+void calc_fft_complex_data(const double *magnitude, const double *phase, size_t fft_size, double *freq) {
 
-    for (i = 0; i <= fft_size / 2; i++) {
+    for (size_t i = 0; i <= fft_size / 2; ++i) {
         if (i == 0 || (i == fft_size / 2 && (fft_size % 2 == 0))) /* fft_size is even */
             freq[i] = magnitude[i];
         else {
@@ -174,10 +164,8 @@ void calc_fft_complex_data(const double *magnitude, const double *phase, int fft
 }
 
 /* multiply_fft_spec_with_gain */
-void multiply_fft_spec_with_gain(const double *gain, int fft_size, double *freq) {
-    int i;
-
-    for (i = 0; i <= fft_size / 2; i++) {
+void multiply_fft_spec_with_gain(const double *gain, size_t fft_size, double *freq) {
+    for (size_t i = 0; i <= fft_size / 2; ++i) {
         if (i == 0 || (i == fft_size / 2 && (fft_size % 2 == 0))) /* fft_size is even */
             freq[i] *= gain[i];
         else {
@@ -205,7 +193,7 @@ double complex_argument(const double real, const double imag) {
 }
 
 double check_nan(double number) {
-    if (isnan(number) || isinf(number))
+    if (isnan((float) number) || isinf((float) number))
         return 0.0;
 
     return number;
@@ -218,7 +206,7 @@ char *show_time(int samplerate, int samples) {
 
     seconds = (double) samples / samplerate;
 
-    minutes = seconds / 60;
+    minutes = (int) seconds / 60;
     seconds -= minutes * 60;
 
     hours = minutes / 60;

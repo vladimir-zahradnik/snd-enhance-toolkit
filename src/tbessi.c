@@ -16,7 +16,6 @@
 !
 !                         Visual C++ Release 1.0 By J-P Moreau, Paris
 ! --------------------------------------------------------------------*/
-#include <stdio.h>
 #include <math.h>
 
 

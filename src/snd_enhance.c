@@ -23,7 +23,6 @@
 #include <string.h>
 #include <math.h>
 #include "snd_enhance.h"
-#include "noise_est.h"
 #include "tbessi.h"
 #include "lpc.h"
 #include "i18n.h"
@@ -36,7 +35,7 @@ static double calc_snr_seg(double norm_signal, double norm_noise);
 
 snd_enh_func_t parse_snd_enhance_type(const char *name, bool verbose) {
     if (name == NULL) {
-        if (verbose == true)
+        if (verbose)
             puts(_("No sound enhancement algorithm was specified. Using default."));
         return snd_enhance_specsub;
     }
@@ -51,7 +50,7 @@ snd_enh_func_t parse_snd_enhance_type(const char *name, bool verbose) {
     if (strcmp(name, "residual") == 0)
         return snd_enhance_residual;
 
-    if (verbose == true)
+    if (verbose)
         puts(_("Error: Unknown sound enhancement algorithm was specified. Using default."));
     return snd_enhance_specsub;
 }
@@ -74,8 +73,8 @@ char *get_snd_enhance_name(const char *name) {
     return (_("Spectral substraction algorithm (default)"));
 }
 
-void snd_enhance_specsub(double *fft_data, int fft_size, fftw_plan fft_forw, fftw_plan fft_back,
-                         noise_est_func_t noise_estimation, int datalen, int samplerate) {
+void snd_enhance_specsub(double *fft_data, size_t fft_size, fftw_plan fft_forw, fftw_plan fft_back,
+                         noise_est_func_t noise_estimation, size_t datalen, int samplerate) {
     /* initialize variables */
     double *y_ps = init_buffer_dbl(fft_size / 2 + 1); /* power spectrum */
     double *y_phase = init_buffer_dbl(fft_size / 2 + 1); /* phase */
@@ -83,7 +82,6 @@ void snd_enhance_specsub(double *fft_data, int fft_size, fftw_plan fft_forw, fft
     double norm_ps, norm_ns_ps, beta;
     static double SNRseg = 0.0;
     const double floor = 0.002;
-    int i;
 
     /* FFT */
     fftw_execute(fft_forw);
@@ -102,7 +100,7 @@ void snd_enhance_specsub(double *fft_data, int fft_size, fftw_plan fft_forw, fft
     beta = berouti(SNRseg);
 
     /* spectral substraction */
-    for (i = 0; i <= fft_size / 2; i++) {
+    for (size_t i = 0; i <= fft_size / 2; ++i) {
         y_ps[i] = y_ps[i] - beta * noise_ps[i];
         if ((y_ps[i] - floor * noise_ps[i]) < 0) {
             /* floor negative components */
@@ -123,8 +121,8 @@ void snd_enhance_specsub(double *fft_data, int fft_size, fftw_plan fft_forw, fft
     free(noise_ps);
 }
 
-void snd_enhance_mmse(double *fft_data, int fft_size, fftw_plan fft_forw, fftw_plan fft_back,
-                      noise_est_func_t noise_estimation, int datalen, int samplerate) {
+void snd_enhance_mmse(double *fft_data, size_t fft_size, fftw_plan fft_forw, fftw_plan fft_back,
+                      noise_est_func_t noise_estimation, size_t datalen, int samplerate) {
     /* initialize variables */
     double *y_ps = init_buffer_dbl(fft_size / 2 + 1); /* power spectrum */
     double *y_phase = init_buffer_dbl(fft_size / 2 + 1); /* phase */
@@ -133,7 +131,6 @@ void snd_enhance_mmse(double *fft_data, int fft_size, fftw_plan fft_forw, fftw_p
     static double Xk_prev[FFT_MAX / 2 + 1];
     static double SNRseg = 0.0;
     static int calls = 0;
-    int i;
 
     /* MMSE parameters */
     const double aa = 0.98;
@@ -157,7 +154,7 @@ void snd_enhance_mmse(double *fft_data, int fft_size, fftw_plan fft_forw, fftw_p
 
     SNRseg = calc_snr_seg(norm_ps, norm_ns_ps);
 
-    for (i = 0; i <= fft_size / 2; i++) {
+    for (size_t i = 0; i <= fft_size / 2; ++i) {
         gammak = check_nan(y_ps[i] / noise_ps[i]);
 
         if (gammak > 40)
@@ -208,8 +205,8 @@ void snd_enhance_mmse(double *fft_data, int fft_size, fftw_plan fft_forw, fftw_p
     free(noise_ps);
 }
 
-void snd_enhance_wiener_as(double *fft_data, int fft_size, fftw_plan fft_forw, fftw_plan fft_back,
-                           noise_est_func_t noise_estimation, int datalen, int samplerate) {
+void snd_enhance_wiener_as(double *fft_data, size_t fft_size, fftw_plan fft_forw, fftw_plan fft_back,
+                           noise_est_func_t noise_estimation, size_t datalen, int samplerate) {
     /* initialize variables */
     double *y_ps = init_buffer_dbl(fft_size / 2 + 1); /* power spectrum */
     double *noise_ps = init_buffer_dbl(fft_size / 2 + 1); /* noise power spectrum */
@@ -224,7 +221,6 @@ void snd_enhance_wiener_as(double *fft_data, int fft_size, fftw_plan fft_forw, f
     static double SNRseg = 0.0;
     static int calls = 0;
     const double a_dd = 0.98;
-    int i;
 
     /* FFT */
     fftw_execute(fft_forw);
@@ -238,7 +234,7 @@ void snd_enhance_wiener_as(double *fft_data, int fft_size, fftw_plan fft_forw, f
 
     SNRseg = calc_snr_seg(norm_ps, norm_ns_ps);
 
-    for (i = 0; i <= fft_size / 2; i++) {
+    for (size_t i = 0; i <= fft_size / 2; ++i) {
         posteri[i] = check_nan(y_ps[i] / noise_ps[i]);
 
         posteri_prime[i] = posteri[i] - 1;
@@ -274,8 +270,8 @@ void snd_enhance_wiener_as(double *fft_data, int fft_size, fftw_plan fft_forw, f
     free(G);
 }
 
-void snd_enhance_wiener_iter(double *fft_data, int fft_size, fftw_plan fft_forw, fftw_plan fft_back,
-                             noise_est_func_t noise_estimation, int datalen, int samplerate) {
+void snd_enhance_wiener_iter(double *fft_data, size_t fft_size, fftw_plan fft_forw, fftw_plan fft_back,
+                             noise_est_func_t noise_estimation, size_t datalen, int samplerate) {
     /* initialize variables */
     const int pred_order = 12; /* LPC order */
     const int iter_num = 3;
@@ -291,9 +287,8 @@ void snd_enhance_wiener_iter(double *fft_data, int fft_size, fftw_plan fft_forw,
     double mean_tmp = 0;
     double lpc_energy = 0;
     double g = 0; /* gain */
-    int i, j, k;
 
-    lpc_from_data(fft_data, lpc_coeffs, datalen, pred_order);
+    lpc_from_data(fft_data, lpc_coeffs, (int) datalen, pred_order);
 
     /* FFT */
     fftw_execute(fft_forw);
@@ -308,15 +303,15 @@ void snd_enhance_wiener_iter(double *fft_data, int fft_size, fftw_plan fft_forw,
     SNRseg = calc_snr_seg(norm_ps, norm_ns_ps);
 
     /* wiener iterations */
-    for (k = 0; k < iter_num; k++) {
+    for (int k = 0; k < iter_num; ++k) {
 
-        for (i = 0; i <= fft_size / 2; i++) {
+        for (size_t i = 0; i <= fft_size / 2; ++i) {
             if (i == 0) {
                 lpc_energy = 0.0;
                 mean_tmp = 0.0;
             }
 
-            for (j = 0; j <= pred_order; j++) {
+            for (int j = 0; j <= pred_order; ++j) {
                 if (j == 0) {
                     /* first LPC coefficient, e.g. 1.0, is not in array */
                     xx_tmp[0] = 1.0;
@@ -340,7 +335,7 @@ void snd_enhance_wiener_iter(double *fft_data, int fft_size, fftw_plan fft_forw,
             g = min_energy;
 
         /* wiener filtering */
-        for (i = 0; i <= fft_size / 2; i++) {
+        for (size_t i = 0; i <= fft_size / 2; ++i) {
             h_spec[i] = (g * xx[i]) / (g * xx[i] + noise_ps[i]);
         }
 
@@ -351,7 +346,7 @@ void snd_enhance_wiener_iter(double *fft_data, int fft_size, fftw_plan fft_forw,
         fftw_execute(fft_back);
 
         if (k < iter_num - 1) {
-            for (i = 0; i < fft_size; i++) {
+            for (size_t i = 0; i < fft_size; ++i) {
                 if (i < datalen)
                     fft_data[i] = fft_data[i] / fft_size;
                 else
@@ -359,7 +354,7 @@ void snd_enhance_wiener_iter(double *fft_data, int fft_size, fftw_plan fft_forw,
             }
 
             /* calculate new LPC coefficients */
-            lpc_from_data(fft_data, lpc_coeffs, fft_size, pred_order);
+            lpc_from_data(fft_data, lpc_coeffs, (int) fft_size, pred_order);
 
             /* FFT */
             fftw_execute(fft_forw);
@@ -394,15 +389,14 @@ static double calc_snr_seg(double norm_signal, double norm_noise) {
     return SNRseg;
 }
 
-void snd_enhance_residual(double *fft_data, int fft_size, fftw_plan fft_forw, fftw_plan fft_back,
-                          noise_est_func_t noise_estimation, int datalen, int samplerate) {
+void snd_enhance_residual(double *fft_data, size_t fft_size, fftw_plan fft_forw, fftw_plan fft_back,
+                          noise_est_func_t noise_estimation, size_t datalen, int samplerate) {
     /* initialize variables */
     double *y_ps = init_buffer_dbl(fft_size / 2 + 1); /* power spectrum */
     double *y_phase = init_buffer_dbl(fft_size / 2 + 1); /* phase */
     double *noise_ps = init_buffer_dbl(fft_size / 2 + 1); /* noise power spectrum */
     double norm_ps, norm_ns_ps;
     static double SNRseg = 0.0;
-    int i;
 
     /* FFT */
     fftw_execute(fft_forw);
@@ -418,7 +412,7 @@ void snd_enhance_residual(double *fft_data, int fft_size, fftw_plan fft_forw, ff
 
     SNRseg = calc_snr_seg(norm_ps, norm_ns_ps);
 
-    for (i = 0; i <= fft_size / 2; i++) {
+    for (size_t i = 0; i <= fft_size / 2; ++i) {
         noise_ps[i] = sqrt(noise_ps[i]);
     }
 

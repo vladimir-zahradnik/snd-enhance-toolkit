@@ -24,16 +24,21 @@
 
 #include <sndfile.h>
 
-#define FFT_MAX           2048              /* maximum size of FFT transform */
-#define WINDOW_MAX        FFT_MAX/2         /* maximum size of window */
+/* maximum size of FFT transform */
+#define FFT_MAX                             2048
 
-#define OPTIMAL_FFT_SIZE(x)              (2 * pow(2, ceil(log2(x))))
+/* maximum size of window */
+#define WINDOW_MAX                          FFT_MAX/2
 
-#define WINDOW_SIZE(x, y)                 (floor(((x) * (y) / 1000)))
+/* make sure it is an integer */
+#define OPTIMAL_FFT_SIZE(x)                 ((size_t) (2 * pow(2, ceil(log2(x)))))
 
-#define ARRAY_LEN(x)                     ((int) (sizeof (x) / sizeof (x [0])))
-#define MAX(x, y)                         ((x) > (y) ? (x) : (y))
-#define MIN(x, y)                         ((x) < (y) ? (x) : (y))
+/* Make sure it is an integer */
+#define WINDOW_SIZE(x, y)                   ((size_t) (floor(((x) * (y) / 1000))))
+
+#define ARRAY_LEN(x)                        ((int) (sizeof (x) / sizeof (x [0])))
+#define MAX(x, y)                           ((x) > (y) ? (x) : (y))
+#define MIN(x, y)                           ((x) < (y) ? (x) : (y))
 
 
 /* Boolean support */
@@ -52,7 +57,7 @@
 #endif
 
 #ifndef istrue_bool
-#define istrue_bool(x)           ((((bool) (x)) == true) ? (_("enabled")) : (_("disabled")))
+#define istrue_bool(x)                      ((((bool) (x)) == true) ? (_("enabled")) : (_("disabled")))
 #endif
 
 /* sfx_mix_mono_read_double */
@@ -73,19 +78,19 @@ extern double *init_buffer_dbl(size_t size);
 extern void multiply_arrays_dbl(double *array1, double *array2, double *output_array, int len);
 
 /* calc_magnitude */
-extern void calc_magnitude(const double *freq, int fft_size, double *magnitude);
+extern void calc_magnitude(const double *freq, size_t fft_size, double *magnitude);
 
 /* calc_phase */
-extern void calc_phase(const double *freq, int fft_size, double *phase);
+extern void calc_phase(const double *freq, size_t fft_size, double *phase);
 
 /* calc_power_spectrum */
-extern double calc_power_spectrum(const double *magnitude, int fft_size, double *power_spectrum);
+extern double calc_power_spectrum(const double *magnitude, size_t fft_size, double *power_spectrum);
 
 /* recreate complex array from magnitude and phase arrays */
-extern void calc_fft_complex_data(const double *magnitude, const double *phase, int fft_size, double *freq);
+extern void calc_fft_complex_data(const double *magnitude, const double *phase, size_t fft_size, double *freq);
 
 /* multiply_fft_spec_with_gain */
-extern void multiply_fft_spec_with_gain(const double *gain, int fft_size, double *freq);
+extern void multiply_fft_spec_with_gain(const double *gain, size_t fft_size, double *freq);
 
 /* phase of complex number */
 extern double complex_argument(const double real, const double imag);

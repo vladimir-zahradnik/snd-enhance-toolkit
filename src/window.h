@@ -11,7 +11,7 @@
 
 #include "common.h"
 
-typedef double (*window_func_t)(double *data, int datalen);
+typedef double (*window_func_t)(double *data, size_t datalen);
 
 /* parse window type */
 extern window_func_t parse_window_type(const char *name, bool verbose);
@@ -20,20 +20,20 @@ extern window_func_t parse_window_type(const char *name, bool verbose);
 char *get_window_name(const char *name);
 
 /* apply_window */
-extern double apply_window(double *data, int datalen, window_func_t calc_window);
+extern double apply_window(double *data, size_t datalen, window_func_t calc_window);
 
-extern double calc_hamming_window(double *data, int datalen);
+extern double calc_hamming_window(double *data, size_t datalen);
 
-extern double calc_hann_window(double *data, int datalen);
+extern double calc_hann_window(double *data, size_t datalen);
 
-extern double calc_blackman_window(double *data, int datalen);
+extern double calc_blackman_window(double *data, size_t datalen);
 
-extern double calc_bartlett_window(double *data, int datalen);
+extern double calc_bartlett_window(double *data, size_t datalen);
 
-extern double calc_triangular_window(double *data, int datalen);
+extern double calc_triangular_window(double *data, size_t datalen);
 
-extern double calc_rectangular_window(double *data, int datalen);
+extern double calc_rectangular_window(double *data, size_t datalen);
 
-extern double calc_nuttall_window(double *data, int datalen);
+extern double calc_nuttall_window(double *data, size_t datalen);
 
 #endif

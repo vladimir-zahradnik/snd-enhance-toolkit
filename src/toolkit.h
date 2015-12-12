@@ -12,9 +12,9 @@
 /* parse_line() rules */
 enum pl_ruletype {
     PLRT_STRING, /* Offset points to a String (strdup()) */
-            PLRT_INTEGER, /* Offset points to a Integer (unsigned int) */
-            PLRT_BOOL, /* Offset points to a Boolean. */
-            PLRT_END                      /* End of rules */
+    PLRT_INTEGER, /* Offset points to a Integer (unsigned int) */
+    PLRT_BOOL, /* Offset points to a Boolean. */
+    PLRT_END      /* End of rules */
 };
 
 /* command line rules */
@@ -41,7 +41,7 @@ typedef struct setk_global_args_t {
     /* these values may be changed by user */
     int frame_duration;
     /* --frame-dur option      */
-    int fft_size;
+    size_t fft_size;
     /* --fft-size option       */
     int overlap;
     /* --overlap option        */
@@ -57,7 +57,7 @@ typedef struct setk_global_args_t {
     bool downmix;                        /* --downmix option        */
     bool verbosity;
     /* -v or --verbose option  */
-    int window_size;                     /* size of window          */
+    size_t window_size;                     /* size of window          */
 } setk_options_t;
 
 #endif
