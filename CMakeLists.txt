@@ -18,5 +18,6 @@ include_directories(${SNDFILE_INCLUDE_DIRS} ${FFTW_INCLUDES} ${MATH_INCLUDE_DIR}
 # Required libraries
 set(CORELIBS ${SNDFILE_LIBRARY} ${FFTW_LIBRARIES} ${MATH_LIBRARIES})
 
+# Use GNU 99 C standard, which is less strict than C99
 set(CMAKE_C_FLAGS ${CMAKE_C_FLAGS} "-g -Wall -std=gnu99")
 add_subdirectory(src)
