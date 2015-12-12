@@ -15,11 +15,12 @@
 ** along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "common.h"
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
 #include <math.h>
+
+#include "common.h"
 #include "i18n.h"
 
 /* sfx_mix_mono_read_double */
@@ -193,6 +194,7 @@ double complex_argument(const double real, const double imag) {
 }
 
 double check_nan(double number) {
+    // isnan() uses float as input. However for checking of NaN condition we should be OK.
     if (isnan((float) number) || isinf((float) number))
         return 0.0;
 

@@ -86,7 +86,7 @@ double calc_hamming_window(double *data, size_t datalen) {
     double winGain = 0.0;
 
     for (size_t n = 0; n < datalen; ++n) {
-        data[n] = ((n >= 0) && (n <= datalen - 1)) ? 0.54 - 0.46 * cos(2 * M_PI * n / (datalen - 1)) : 0;
+        data[n] = (n <= datalen - 1) ? 0.54 - 0.46 * cos(2 * M_PI * n / (datalen - 1)) : 0;
         winGain += data[n];
     }
 
@@ -98,7 +98,7 @@ double calc_hann_window(double *data, size_t datalen) {
     double winGain = 0.0;
 
     for (size_t n = 0; n < datalen; ++n) {
-        data[n] = ((n >= 0) && (n <= datalen - 1)) ? 0.5 * (1 - cos(2 * M_PI * (n + 1) / (datalen + 1))) : 0;
+        data[n] = (n <= datalen - 1) ? 0.5 * (1 - cos(2 * M_PI * (n + 1) / (datalen + 1))) : 0;
         winGain += data[n];
     }
 
@@ -110,7 +110,7 @@ double calc_blackman_window(double *data, size_t datalen) {
     double winGain = 0.0;
 
     for (size_t n = 0; n < datalen; n++) {
-        data[n] = ((n >= 0) && (n <= datalen - 1)) ?
+        data[n] = (n <= datalen - 1) ?
                   0.42 - 0.5 * cos(2 * M_PI * n / (datalen - 1)) + 0.08 * cos(4 * M_PI * n / (datalen - 1)) : 0;
         winGain += data[n];
     }
@@ -124,7 +124,7 @@ double calc_bartlett_window(double *data, size_t datalen) {
 
     for (size_t n = 0; n < datalen; ++n) {
         if ((datalen % 2) == 0) { /* n is even */
-            if ((n >= 0) && (n <= datalen / 2 - 1))
+            if (n <= datalen / 2 - 1)
                 data[n] = 2.0 * n / (datalen - 1);
             else if ((n >= datalen / 2) && (n <= datalen - 1))
                 data[n] = 2.0 * (datalen - n - 1) / (datalen - 1);
@@ -132,7 +132,7 @@ double calc_bartlett_window(double *data, size_t datalen) {
                 data[n] = 0.0;
         }
         else { /* n is odd */
-            if ((n >= 0) && (n <= (datalen - 1) / 2))
+            if (n <= (datalen - 1) / 2)
                 data[n] = 2.0 * n / (datalen - 1);
             else if ((n > (datalen - 1) / 2) && (n <= datalen - 1))
                 data[n] = 2 - 2.0 * n / (datalen - 1);
@@ -151,7 +151,7 @@ double calc_triangular_window(double *data, size_t datalen) {
 
     for (size_t n = 0; n < datalen; ++n) {
         if ((datalen % 2) == 0) { /* n is even */
-            if ((n >= 0) && (n <= datalen / 2 - 1))
+            if (n <= datalen / 2 - 1)
                 data[n] = (2.0 * n + 1) / datalen;
             else if ((n >= datalen / 2) && (n <= datalen - 1))
                 data[n] = (2.0 * (datalen - n) - 1) / datalen;
@@ -159,7 +159,7 @@ double calc_triangular_window(double *data, size_t datalen) {
                 data[n] = 0.0;
         }
         else { /* n is odd */
-            if ((n >= 0) && (n <= (datalen - 1) / 2))
+            if (n <= (datalen - 1) / 2)
                 data[n] = 2.0 * (n + 1) / (datalen + 1);
             else if ((n > (datalen - 1) / 2) && (n <= datalen - 1))
                 data[n] = 2.0 * (datalen - n) / (datalen + 1);
@@ -177,7 +177,7 @@ double calc_rectangular_window(double *data, size_t datalen) {
     double winGain = 0.0;
 
     for (size_t n = 0; n < datalen; ++n) {
-        data[n] = ((n >= 0) && (n < datalen)) ? 1 : 0;
+        data[n] = (n < datalen) ? 1 : 0;
         winGain += data[n];
     }
 

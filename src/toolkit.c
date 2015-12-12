@@ -19,16 +19,18 @@
 #include "config.h"
 #endif
 
-#include "common.h"
-#include "toolkit.h"
-#include "snd_enhance.h"
-#include "window.h"
-#include "i18n.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
 #include <errno.h>
 #include <getopt.h>
+
+#include "config.h"
+#include "common.h"
+#include "toolkit.h"
+#include "snd_enhance.h"
+#include "window.h"
+#include "i18n.h"
 
 static pl_rule setk_conf_rules[] = {
         {"input_file",        PLRT_STRING,  offsetof(setk_options_t, input_filename)},
@@ -200,7 +202,7 @@ int main(int argc, char **argv) {
                 opts.output_filename = optarg;
                 break;
             case ARG_VERSION:
-                printf(_("Sound Enhancement Toolkit %s\n"), PACKAGE_VERSION);
+                printf(_("Sound Enhancement Toolkit Version %d.%d\n"), snd_tk_VERSION_MAJOR, snd_tk_VERSION_MINOR);
                 break;
             case 'v':   /* verbose mode */
                 opts.verbosity = true;

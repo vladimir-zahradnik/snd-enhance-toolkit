@@ -1,0 +1,3 @@
+// Program's version number
+#define snd_tk_VERSION_MAJOR @snd_tk_VERSION_MAJOR@
+#define snd_tk_VERSION_MINOR @snd_tk_VERSION_MINOR@

@@ -45,7 +45,7 @@ Carsten Bormann
 
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
+#include <alloca.h>
 #include "lpc.h"
 
 /* Autocorrelation LPC coeff generation algorithm invented by

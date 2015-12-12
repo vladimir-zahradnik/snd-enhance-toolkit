@@ -5,10 +5,6 @@
 #define offsetof(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)
 #endif
 
-/* define program version, needs to be removed *
- * when autotools transition will be complete  */
-#define PACKAGE_VERSION  "0.10"
-
 /* parse_line() rules */
 enum pl_ruletype {
     PLRT_STRING, /* Offset points to a String (strdup()) */
